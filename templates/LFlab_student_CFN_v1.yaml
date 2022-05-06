@@ -1,251 +1,46 @@
----
 AWSTemplateFormatVersion: 2010-09-09
-Outputs:
-  DMSLabRoleS3:
-    Description: The DMS serivce role
-    Value: !GetAtt DMSLabRoleS3.Arn
-  GlueLabRole:
-    Description: The Glue service role
-    Value: !Ref GlueLabRole
-  BucketName:
-    Description: S3 Bucket that was created
-    Value: !Ref DMSLabS3Bucket
-  S3BucketWorkgroupA:
-    Description: S3 Bucket for storing workgroup A results
-    Value: !Ref S3BucketWorkgroupA
-  S3BucketWorkgroupB:
-    Description: S3 bucket for storing workgroup B results
-    Value: !Ref S3BucketWorkgroupB
-  BusinessAnalystUser:
-    Description: business_analyst_user for Workgroup A
-    Value: !Ref BusinessAnalystUser
-  WorkgroupManagerUser:
-    Description: workgroup_manager_user for access to Workgroup A and Workgroup B
-    Value: !Ref WorkgroupManagerUser
-  LakeFormationRole:
-    Description: Lake Formation IAM role
-    Value: !Ref LakeFormationWorkflowRole
-  SecurityGroupId:
-    Description: Default Security Group Id
-    Value: !Ref sgdefault
-  SubnetId:
-    Description: Subnet ID to be used with database connector
-    Value: !Ref dmslabstudentsubnet1
-Parameters:
-  DMSCWRoleCreated:
-    Description: dms-cloudwatch-logs-role already created in account?
-    Default: no
-    Type: String
-    AllowedValues:
-      - no
-      - yes
-    ConstraintDescription: must specify 'yes' or 'no'.
-Conditions:
-  DMSCWRoleExist:
-    Fn::Equals:
-      - !Ref DMSCWRoleCreated
-      - no
+
 Resources:
-  dmslabstudentvpc:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: 10.0.0.0/24
-      EnableDnsSupport: true
-      EnableDnsHostnames: false
-      Tags:
-        -
-          Key: Name
-          Value: dmslstudv1
-  dmslabstudentsubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      CidrBlock: 10.0.0.0/26
-      AvailabilityZone: !Select
-        - 0
-        - Fn::GetAZs: !Ref 'AWS::Region'
-      VpcId: !Ref dmslabstudentvpc
-      Tags:
-        -
-          Key: Name
-          Value: private_subnet
-  dmslabstudentsubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      CidrBlock: 10.0.0.128/26
-      AvailabilityZone: !Select
-        - 1
-        - Fn::GetAZs: !Ref 'AWS::Region'
-      VpcId: !Ref dmslabstudentvpc
-      Tags:
-        -
-          Key: Name
-          Value: private_subnet
-  dmslabstudentsubnet3:
-    Type: AWS::EC2::Subnet
-    Properties:
-      CidrBlock: 10.0.0.64/26
-      AvailabilityZone: !Select
-        - 2
-        - Fn::GetAZs: !Ref 'AWS::Region'
-      VpcId: !Ref dmslabstudentvpc
-      Tags:
-        -
-          Key: Name
-          Value: public_subnet
-  dmslabstudentigw:
-    Type: AWS::EC2::InternetGateway
-    Properties:
-      Tags:
-        -
-          Key: Name
-          Value: DMSLab-IGW
-  NatPublicIP:
-    DependsOn: dmslabstudentvpc
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-  NatGateway:
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId: !GetAtt NatPublicIP.AllocationId
-      SubnetId: !Ref dmslabstudentsubnet3
-      Tags:
-        -
-          Key: Name
-          Value: NatGateway
-  dmslabstudentdopt:
-    Type: AWS::EC2::DHCPOptions
-    Properties:
-      DomainName: ec2.internal
-      DomainNameServers:
-        - AmazonProvidedDNS
-  dmslabstudentacl:
-    Type: AWS::EC2::NetworkAcl
-    Properties:
-      VpcId: !Ref dmslabstudentvpc
-  dmslabstudentrtable1:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref dmslabstudentvpc
-      Tags:
-        -
-          Key: Network
-          Value: Private
-        -
-          Key: Nane
-          Value: PrivateRouteTable
-  dmslabstudentrtable2:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref dmslabstudentvpc
-      Tags:
-        -
-          Key: Network
-          Value: Public
-        -
-          Key: Name
-          Value: PublicRouteTable
-  sgdefault:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: default VPC security group
-      VpcId: !Ref dmslabstudentvpc
-  acl1:
-    Type: AWS::EC2::NetworkAclEntry
-    Properties:
-      CidrBlock: 0.0.0.0/0
-      Egress: true
-      Protocol: -1
-      RuleAction: allow
-      RuleNumber: 100
-      NetworkAclId: !Ref dmslabstudentacl
-  acl2:
-    Type: AWS::EC2::NetworkAclEntry
-    Properties:
-      CidrBlock: 0.0.0.0/0
-      Protocol: -1
-      RuleAction: allow
-      RuleNumber: 100
-      NetworkAclId: !Ref dmslabstudentacl
-  subnetacl1:
-    Type: AWS::EC2::SubnetNetworkAclAssociation
-    Properties:
-      NetworkAclId: !Ref dmslabstudentacl
-      SubnetId: !Ref dmslabstudentsubnet3
-  subnetacl2:
-    Type: AWS::EC2::SubnetNetworkAclAssociation
-    Properties:
-      NetworkAclId: !Ref dmslabstudentacl
-      SubnetId: !Ref dmslabstudentsubnet1
-  subnetacl3:
-    Type: AWS::EC2::SubnetNetworkAclAssociation
-    Properties:
-      NetworkAclId: !Ref dmslabstudentacl
-      SubnetId: !Ref dmslabstudentsubnet2
-  gw1:
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      VpcId: !Ref dmslabstudentvpc
-      InternetGatewayId: !Ref dmslabstudentigw
-  subnetroute1:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId: !Ref dmslabstudentrtable1
-      SubnetId: !Ref dmslabstudentsubnet1
-  subnetroute3:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId: !Ref dmslabstudentrtable1
-      SubnetId: !Ref dmslabstudentsubnet2
-  subnetroute4:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId: !Ref dmslabstudentrtable2
-      SubnetId: !Ref dmslabstudentsubnet3
-  route1:
-    Type: AWS::EC2::Route
-    Properties:
-      DestinationCidrBlock: 0.0.0.0/0
-      RouteTableId: !Ref dmslabstudentrtable1
-      NatGatewayId: !Ref NatGateway
-  route2:
-    DependsOn: gw1
-    Type: AWS::EC2::Route
-    Properties:
-      DestinationCidrBlock: 0.0.0.0/0
-      RouteTableId: !Ref dmslabstudentrtable2
-      GatewayId: !Ref dmslabstudentigw
-  dchpassoc1:
-    Type: AWS::EC2::VPCDHCPOptionsAssociation
-    Properties:
-      VpcId: !Ref dmslabstudentvpc
-      DhcpOptionsId: !Ref dmslabstudentdopt
-  ingress1:
-    Type: "AWS::EC2::SecurityGroupIngress"
-    Properties:
-      GroupId: !Ref sgdefault
-      IpProtocol: "-1"
-      SourceSecurityGroupId: !Ref sgdefault
-  egress1:
-    Type: AWS::EC2::SecurityGroupEgress
-    Properties:
-      GroupId: !Ref sgdefault
-      IpProtocol: "-1"
-      CidrIp: 0.0.0.0/0
-  S3Endpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      RouteTableIds:
-        - !Ref dmslabstudentrtable1
-        - !Ref dmslabstudentrtable2
-      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
-      VpcId: !Ref dmslabstudentvpc
-  DMSLabS3Bucket:
+  LFLabS3Bucket:
     Type: AWS::S3::Bucket
-  DMSLabS3Policy:
+    Properties:
+      AccessControl: Private
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: TRUE
+        BlockPublicPolicy: TRUE
+        IgnorePublicAcls: TRUE
+        RestrictPublicBuckets: TRUE
+      VersioningConfiguration:
+        Status: Suspended
+
+  LFLabsS3BucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref LFLabS3Bucket
+      PolicyDocument:
+        Id: LFLabS3BucketPolicy
+        Version: 2012-10-17
+        Statement:
+          - Sid: AllowOnlySecureTransport
+            Action:
+              - s3:*
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'false'
+            Effect: Deny
+            Principal: '*'
+            Resource:
+              - !Sub 'arn:aws:s3:::${LFLabS3Bucket}'
+              - !Sub 'arn:aws:s3:::${LFLabS3Bucket}/*'
+
+  LFLabS3Policy:
     Type: AWS::IAM::Policy
     Properties:
-      PolicyName: DMSLabS3Policy
+      PolicyName: LFLabS3Policy
       PolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -256,30 +51,16 @@ Resources:
               - s3:PutObject
               - s3:DeleteObject
             Resource:
-              - !Sub ${DMSLabS3Bucket.Arn}/*
+              - !Sub ${LFLabS3Bucket.Arn}/*
           -
             Effect: Allow
             Action:
               - s3:ListBucket
             Resource:
-              - !GetAtt DMSLabS3Bucket.Arn
+              - !GetAtt LFLabS3Bucket.Arn
       Roles:
-        - !Ref DMSLabRoleS3
         - !Ref GlueLabRole
-  DMSLabRoleS3:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          -
-            Effect: Allow
-            Principal:
-              Service:
-                - dms.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Path: /
+
   GlueLabRole:
     Type: AWS::IAM::Role
     Properties:
@@ -297,25 +78,7 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
         - arn:aws:iam::aws:policy/AmazonKinesisFullAccess
-  DMSCloudWatchLogRole:
-    Type: AWS::IAM::Role
-    Condition: DMSCWRoleExist
-    Properties:
-      RoleName: dms-cloudwatch-logs-role
-      Description: Do not create the role to avoid duplication error, if it exists already
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          -
-            Effect: Allow
-            Principal:
-              Service:
-                - dms.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Path: /
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonDMSCloudWatchLogsRole
+
   LakeFormationWorkflowRole:
     Type: AWS::IAM::Role
     Properties:
@@ -357,10 +120,79 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonS3FullAccess
         - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
         - arn:aws:iam::aws:policy/AWSGlueConsoleFullAccess
-  S3BucketWorkgroupA:
+
+  WorkgroupAS3Bucket:
     Type: AWS::S3::Bucket
-  S3BucketWorkgroupB:
+    Properties:
+      AccessControl: Private
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: TRUE
+        BlockPublicPolicy: TRUE
+        IgnorePublicAcls: TRUE
+        RestrictPublicBuckets: TRUE
+      VersioningConfiguration:
+        Status: Suspended
+
+  WorkgroupAS3BucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref WorkgroupAS3Bucket
+      PolicyDocument:
+        Id: WorkgroupAS3BucketPolicy
+        Version: 2012-10-17
+        Statement:
+          - Sid: AllowOnlySecureTransport
+            Action:
+              - s3:*
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'false'
+            Effect: Deny
+            Principal: '*'
+            Resource:
+              - !Sub 'arn:aws:s3:::${WorkgroupAS3Bucket}'
+              - !Sub 'arn:aws:s3:::${WorkgroupAS3Bucket}/*'
+
+  WorkgroupBS3Bucket:
     Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: Private
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: TRUE
+        BlockPublicPolicy: TRUE
+        IgnorePublicAcls: TRUE
+        RestrictPublicBuckets: TRUE
+      VersioningConfiguration:
+        Status: Suspended
+
+  WorkgroupBS3BucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref WorkgroupBS3Bucket
+      PolicyDocument:
+        Id: WorkgroupBS3BucketPolicy
+        Version: 2012-10-17
+        Statement:
+          - Sid: AllowOnlySecureTransport
+            Action:
+              - s3:*
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'false'
+            Effect: Deny
+            Principal: '*'
+            Resource:
+              - !Sub 'arn:aws:s3:::${WorkgroupBS3Bucket}'
+              - !Sub 'arn:aws:s3:::${WorkgroupBS3Bucket}/*'
+
   BusinessAnalystUserPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
@@ -400,10 +232,10 @@ Resources:
               - s3:GetBucketLocation
               - athena:BatchGetQueryExecution
             Resource:
-              - !Sub arn:aws:s3:::${S3BucketWorkgroupA}/*
-              - !Sub arn:aws:s3:::${S3BucketWorkgroupA}
-              - !Sub arn:aws:s3:::${DMSLabS3Bucket}
-              - !Sub arn:aws:s3:::${DMSLabS3Bucket}/*
+              - !Sub arn:aws:s3:::${WorkgroupAS3Bucket}/*
+              - !Sub arn:aws:s3:::${WorkgroupAS3Bucket}
+              - !Sub arn:aws:s3:::${LFLabS3Bucket}
+              - !Sub arn:aws:s3:::${LFLabS3Bucket}/*
               - !Sub arn:aws:athena:${AWS::Region}:${AWS::AccountId}:workgroup/workgroupA
           -
             Effect: Allow
@@ -422,6 +254,7 @@ Resources:
               - !Sub arn:aws:glue:${AWS::Region}:${AWS::AccountId}:table/ticketdata/parquet_sport_team
               - !Sub arn:aws:glue:${AWS::Region}:${AWS::AccountId}:table/ticketdata/parquet_sport_location
               - !Sub arn:aws:glue:${AWS::Region}:${AWS::AccountId}:table/ticketdata/sporting_event_info
+
   WorkgroupManagerUserPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
@@ -447,12 +280,12 @@ Resources:
               - s3:GetObjectAcl
               - s3:GetBucketLocation
             Resource:
-              - !Sub arn:aws:s3:::${S3BucketWorkgroupA}
-              - !Sub arn:aws:s3:::${S3BucketWorkgroupA}/*
-              - !Sub arn:aws:s3:::${S3BucketWorkgroupB}
-              - !Sub arn:aws:s3:::${S3BucketWorkgroupB}/*
-              - !Sub arn:aws:s3:::${DMSLabS3Bucket}
-              - !Sub arn:aws:s3:::${DMSLabS3Bucket}/*
+              - !Sub arn:aws:s3:::${WorkgroupAS3Bucket}
+              - !Sub arn:aws:s3:::${WorkgroupAS3Bucket}/*
+              - !Sub arn:aws:s3:::${WorkgroupBS3Bucket}
+              - !Sub arn:aws:s3:::${WorkgroupBS3Bucket}/*
+              - !Sub arn:aws:s3:::${LFLabS3Bucket}
+              - !Sub arn:aws:s3:::${LFLabS3Bucket}/*
               - !Sub arn:aws:athena:${AWS::Region}:${AWS::AccountId}:workgroup/workgroupA
               - !Sub arn:aws:athena:${AWS::Region}:${AWS::AccountId}:workgroup/workgroupB
           -
@@ -472,6 +305,7 @@ Resources:
             Resource:
               - !Sub arn:aws:athena:${AWS::Region}:${AWS::AccountId}:workgroup/workgroupA
               - !Sub arn:aws:athena:${AWS::Region}:${AWS::AccountId}:workgroup/workgroupB
+
   BusinessAnalystUser:
     Type: AWS::IAM::User
     Properties:
@@ -479,6 +313,7 @@ Resources:
         - !Ref BusinessAnalystUserPolicy
       LoginProfile:
         Password: Admin123!
+
   WorkgroupManagerUser:
     Type: AWS::IAM::User
     Properties:
@@ -511,15 +346,15 @@ Resources:
               - Effect: Allow
                 Action: s3:DeleteObject
                 Resource:
-                  - !Sub arn:aws:s3:::${DMSLabS3Bucket}/*
-                  - !Sub arn:aws:s3:::${S3BucketWorkgroupA}/*
-                  - !Sub arn:aws:s3:::${S3BucketWorkgroupB}/*
+                  - !Sub arn:aws:s3:::${LFLabS3Bucket}/*
+                  - !Sub arn:aws:s3:::${WorkgroupAS3Bucket}/*
+                  - !Sub arn:aws:s3:::${WorkgroupBS3Bucket}/*
               - Effect: Allow
                 Action: s3:ListBucket
                 Resource:
-                  - !Sub arn:aws:s3:::${DMSLabS3Bucket}
-                  - !Sub arn:aws:s3:::${S3BucketWorkgroupA}
-                  - !Sub arn:aws:s3:::${S3BucketWorkgroupB}
+                  - !Sub arn:aws:s3:::${LFLabS3Bucket}
+                  - !Sub arn:aws:s3:::${WorkgroupAS3Bucket}
+                  - !Sub arn:aws:s3:::${WorkgroupBS3Bucket}
               - Effect: Allow
                 Action: logs:CreateLogGroup
                 Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*
@@ -528,6 +363,7 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*
+
   S3BucketHandler:
     Type: AWS::Lambda::Function
     Properties:
@@ -542,7 +378,6 @@ Resources:
           from botocore.exceptions import ClientError
 
           s3 = boto3.resource('s3')
-
 
           def handler(event, context):
               print("Received event: %s" % json.dumps(event))
@@ -562,6 +397,7 @@ Resources:
 
       Runtime: python3.8
       Timeout: 300
+
   SisDemoDataHandler:
     Type: AWS::Lambda::Function
     Properties:
@@ -575,7 +411,7 @@ Resources:
           exports.handler = (event) => {
 
               var listParams = {
-                  Bucket: "ee-assets-prod-us-east-1",
+                  Bucket: "ee-assets-prod-us-west-2",
                   Prefix: "modules/7009d8e656004426b1ea6f27f0487d56/v1/sisdemo/"
               };
 
@@ -587,7 +423,7 @@ Resources:
                               console.log(file);
                               var copyParams = {
                                   Bucket: process.env.BUCKET,
-                                  CopySource: "ee-assets-prod-us-east-1" + '/' + file.Key,
+                                  CopySource: "ee-assets-prod-us-west-2" + '/' + file.Key,
                                   Key: file.Key.replace("modules/7009d8e656004426b1ea6f27f0487d56/v1/sisdemo/", "sisdemo/")
                               };
                               console.log(copyParams);
@@ -607,24 +443,53 @@ Resources:
           
       Environment: 
         Variables:
-          BUCKET: !Ref DMSLabS3Bucket
+          BUCKET: !Ref LFLabS3Bucket
       Runtime: nodejs14.x
       Timeout: 300
 
-  EmptyDMSLabS3Bucket:
+  EmptyLFLabS3Bucket:
     Type: "Custom::EmptyS3Bucket"
     Properties:
       ServiceToken: !GetAtt S3BucketHandler.Arn
-      Bucket: !Ref DMSLabS3Bucket
+      Bucket: !Ref LFLabS3Bucket
 
   EmptyWorkgroupAS3Bucket:
     Type: "Custom::EmptyS3Bucket"
     Properties:
       ServiceToken: !GetAtt S3BucketHandler.Arn
-      Bucket: !Ref S3BucketWorkgroupA
+      Bucket: !Ref WorkgroupAS3Bucket
 
   EmptyWorkgroupBS3Bucket:
     Type: "Custom::EmptyS3Bucket"
     Properties:
       ServiceToken: !GetAtt S3BucketHandler.Arn
-      Bucket: !Ref S3BucketWorkgroupB
+      Bucket: !Ref WorkgroupBS3Bucket
+
+Outputs:
+  GlueLabRole:
+    Description: The Glue service role
+    Value: !Ref GlueLabRole
+
+  LakeFormationRole:
+    Description: Lake Formation IAM role
+    Value: !Ref LakeFormationWorkflowRole
+
+  LFLabS3Bucket:
+    Description: S3 Bucket that was created
+    Value: !Ref LFLabS3Bucket
+
+  WorkgroupAS3Bucket:
+    Description: S3 Bucket for storing workgroup A results
+    Value: !Ref WorkgroupAS3Bucket
+
+  WorkgroupBS3Bucket:
+    Description: S3 bucket for storing workgroup B results
+    Value: !Ref WorkgroupBS3Bucket
+
+  BusinessAnalystUser:
+    Description: business_analyst_user for Workgroup A
+    Value: !Ref BusinessAnalystUser
+
+  WorkgroupManagerUser:
+    Description: workgroup_manager_user for access to Workgroup A and Workgroup B
+    Value: !Ref WorkgroupManagerUser
