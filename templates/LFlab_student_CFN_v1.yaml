@@ -398,6 +398,24 @@ Resources:
       Runtime: python3.8
       Timeout: 300
 
+  EmptyLFLabS3Bucket:
+    Type: "Custom::EmptyS3Bucket"
+    Properties:
+      ServiceToken: !GetAtt S3BucketHandler.Arn
+      Bucket: !Ref LFLabS3Bucket
+
+  EmptyWorkgroupAS3Bucket:
+    Type: "Custom::EmptyS3Bucket"
+    Properties:
+      ServiceToken: !GetAtt S3BucketHandler.Arn
+      Bucket: !Ref WorkgroupAS3Bucket
+
+  EmptyWorkgroupBS3Bucket:
+    Type: "Custom::EmptyS3Bucket"
+    Properties:
+      ServiceToken: !GetAtt S3BucketHandler.Arn
+      Bucket: !Ref WorkgroupBS3Bucket
+
   SisDemoDataHandler:
     Type: AWS::Lambda::Function
     Properties:
@@ -446,24 +464,6 @@ Resources:
           BUCKET: !Ref LFLabS3Bucket
       Runtime: nodejs14.x
       Timeout: 300
-
-  EmptyLFLabS3Bucket:
-    Type: "Custom::EmptyS3Bucket"
-    Properties:
-      ServiceToken: !GetAtt S3BucketHandler.Arn
-      Bucket: !Ref LFLabS3Bucket
-
-  EmptyWorkgroupAS3Bucket:
-    Type: "Custom::EmptyS3Bucket"
-    Properties:
-      ServiceToken: !GetAtt S3BucketHandler.Arn
-      Bucket: !Ref WorkgroupAS3Bucket
-
-  EmptyWorkgroupBS3Bucket:
-    Type: "Custom::EmptyS3Bucket"
-    Properties:
-      ServiceToken: !GetAtt S3BucketHandler.Arn
-      Bucket: !Ref WorkgroupBS3Bucket
 
 Outputs:
   GlueLabRole:
